@@ -113,3 +113,35 @@ def recover_averaged_data(
         steady_data.iloc[s : e + 1].mean(axis=0).to_frame().T
         for s, e in zip(starts, ends)
     ]
+
+
+def recover_averaged_data_array(
+    data, freq, step_size_fl, step_duration, features, initialbed
+):
+    difing = data["flowrate_combi"].rolling(
+        int(step_duration * 0.1 * freq)
+    ).max() - data["flowrate_combi"].rolling(int(step_duration * 0.1 * freq)).min(
+        step_duration * freq
+    )
+
+    inds = np.where(np.abs(difing) <= int(step_size_fl) * 0.2)[0]
+
+    steady_data = pd.DataFrame(data.iloc[inds][features])
+    steady_data["initial_bed_height"] = initialbed
+
+    jumps = np.where(np.diff(inds) > 1)[0]
+    starts = np.zeros(len(jumps) + 1, int)
+    ends = np.zeros_like(starts, int)
+    ends[-1] = data.shape[0] - 1
+
+    for i, jump in zip(range(len(jumps)), jumps):
+        starts[i + 1] = jump + 1
+        ends[i] = jump
+
+    steady_means = pd.DataFrame(columns=steady_data.columns)
+    for s, e in zip(starts, ends):
+        steady_means = pd.concat(
+            [steady_means, steady_data.iloc[s : e + 1].mean(axis=0).to_frame().T],
+            ignore_index=True,
+        )
+    return steady_means

@@ -15,10 +15,11 @@ relevant_features = [
     "total_bed_height",
     "p1",
     "flowrate_combi",
+    "bed_exp",
 ]
 mater = "sand"
 
-to_plot = False
+to_plot = True
 
 
 FINAL = pd.DataFrame(columns=relevant_features)
@@ -39,7 +40,7 @@ for file in folder.iterdir():
     # if run_type == "hysteresis":  # including only the forward runs for now
     #     continue
 
-    if step_duration < 20:
+    if step_duration < 30:
         print("Step duration too small for steady state assumption. Skipping file.")
         continue
 
@@ -108,6 +109,6 @@ for file in folder.iterdir():
         print("too many datapoints, steady state separation unsuccessful. skipping.")
 
 
-FINAL.to_csv("sand_data.csv", index=False)
+# FINAL.to_csv("sand_data.csv", index=False)
 print("final shape = ", FINAL.shape)
 print("Final columns = ", FINAL.columns)
