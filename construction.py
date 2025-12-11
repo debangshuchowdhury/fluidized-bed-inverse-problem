@@ -70,15 +70,6 @@ for file in folder.iterdir():
         frequency,
     )
 
-    segments = processing.recover_averaged_data(
-        metrics,
-        frequency,
-        step_size_fl,
-        step_duration,
-        relevant_features,
-        initial_bed_height,
-    )
-
     if to_plot:
         fig, p = plt.subplots(1, 1)
         p.plot(metrics["Minutes"], metrics["total_flowrate"], label="all MFCs")
@@ -87,6 +78,15 @@ for file in folder.iterdir():
         fig.set_figheight(7.5)
         # p.set_xlim(0, 21)
         # p.set_ylim(0, 1700)
+
+    segments = processing.recover_averaged_data(
+        metrics,
+        frequency,
+        step_size_fl,
+        step_duration,
+        relevant_features,
+        initial_bed_height,
+    )
 
     # print(f"1. Final shape = {FINAL.shape}")
     print("segments = ", len(segments))
