@@ -19,8 +19,8 @@ relevant_features = [
 ]
 mater = "sand"
 
-to_plot = True
-to_save = False
+to_plot = False
+to_save = True
 
 FINAL = pd.DataFrame(columns=relevant_features)
 FINAL_backwards = pd.DataFrame(columns=relevant_features)
@@ -46,8 +46,9 @@ for file in folder.iterdir():
         print("Step duration too small for steady state assumption. Skipping file.")
         continue
 
-    # if not initial_bed_height == 0.681:
-    #     continue
+    if initial_bed_height == 0.956:
+        print("skipping 0.956m for testing")
+        continue
 
     print(f"File name: {file.name}")
 
@@ -62,10 +63,6 @@ for file in folder.iterdir():
         data = processing.read_and_process_data(file_path + "/" + file.name, isexcel)
     else:
         raise ValueError("the file type is neither .xlsx nor .csv")
-
-    if initial_bed_height == 0.956:
-        print("skipping 0.956m for testing")
-        continue
 
     metrics = processing.filter(
         processing.calculate_metrics(data, initial_bed_height, mater, step_size_fl),
@@ -104,24 +101,25 @@ for file in folder.iterdir():
     if run_type == "hysteresis":
         FINAL = pd.concat([FINAL, segments.loc[: max_ind + 1]])
         FINAL_backwards = pd.concat([FINAL_backwards, segments.loc[max_ind:]])
-        p.scatter(
-            segments.loc[: max_ind + 1, "Minutes"],
-            segments.loc[: max_ind + 1, "total_flowrate"],
-            c="blue",
-            s=10,
-            zorder=3,
-            label="forward run",
-        )
-        p.scatter(
-            segments.loc[max_ind:, "Minutes"],
-            segments.loc[max_ind:, "total_flowrate"],
-            c="red",
-            s=10,
-            zorder=3,
-            label="backward run",
-        )
-        p.legend()
-        plt.show()
+        if to_plot:
+            p.scatter(
+                segments.loc[: max_ind + 1, "Minutes"],
+                segments.loc[: max_ind + 1, "total_flowrate"],
+                c="blue",
+                s=10,
+                zorder=3,
+                label="forward run",
+            )
+            p.scatter(
+                segments.loc[max_ind:, "Minutes"],
+                segments.loc[max_ind:, "total_flowrate"],
+                c="red",
+                s=10,
+                zorder=3,
+                label="backward run",
+            )
+            p.legend()
+            plt.show()
     else:
         FINAL = pd.concat([FINAL, segments])
         if to_plot:
