@@ -129,6 +129,8 @@ def recover_averaged_data_array(
     steady_data = pd.DataFrame(data.iloc[inds][features])
     steady_data["initial_bed_height"] = initialbed
 
+    steady_data = steady_data.dropna(subset=features + ["initial_bed_height"])
+
     jumps = np.where(np.diff(inds) > 1)[0]
     starts = np.zeros(len(jumps) + 1, int)
     ends = np.zeros_like(starts, int)

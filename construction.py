@@ -20,9 +20,11 @@ relevant_features = [
 mater = "sand"
 
 to_plot = True
-
+to_save = False
 
 FINAL = pd.DataFrame(columns=relevant_features)
+FINAL_backwards = pd.DataFrame(columns=relevant_features)
+
 print("Final shape = ", FINAL.shape)
 
 for file in folder.iterdir():
@@ -62,7 +64,7 @@ for file in folder.iterdir():
         raise ValueError("the file type is neither .xlsx nor .csv")
 
     if initial_bed_height == 0.956:
-        print("skipping 0.813 for testing")
+        print("skipping 0.956m for testing")
         continue
 
     metrics = processing.filter(
@@ -79,7 +81,7 @@ for file in folder.iterdir():
         # p.set_xlim(0, 21)
         # p.set_ylim(0, 1700)
 
-    segments = processing.recover_averaged_data(
+    segments = processing.recover_averaged_data_array(
         metrics,
         frequency,
         step_size_fl,
@@ -88,27 +90,83 @@ for file in folder.iterdir():
         initial_bed_height,
     )
 
-    # print(f"1. Final shape = {FINAL.shape}")
-    print("segments = ", len(segments))
-    if len(segments) < 100:
-        for seg in segments:
-            if to_plot:
-                p.scatter(
-                    seg["Minutes"], seg["total_flowrate"], c="black", s=10, zorder=3
-                )
-            # print("seg = ", seg)
-            if np.any(np.isnan(seg)):
-                raise ValueError("nan in seg")
+    if segments.shape[0] > 100:
+        print("Too many datapoints, steady state assumption voided. Skipping file.")
+        continue
 
-            FINAL = pd.concat([FINAL, seg])
+    if np.any(np.isnan(segments)):
+        raise ValueError("nan in segments")
+
+    segments = segments.dropna(subset=relevant_features)
+
+    max_ind = segments["total_flowrate"].idxmax()
+
+    if run_type == "hysteresis":
+        FINAL = pd.concat([FINAL, segments.loc[: max_ind + 1]])
+        FINAL_backwards = pd.concat([FINAL_backwards, segments.loc[max_ind:]])
+        p.scatter(
+            segments.loc[: max_ind + 1, "Minutes"],
+            segments.loc[: max_ind + 1, "total_flowrate"],
+            c="blue",
+            s=10,
+            zorder=3,
+            label="forward run",
+        )
+        p.scatter(
+            segments.loc[max_ind:, "Minutes"],
+            segments.loc[max_ind:, "total_flowrate"],
+            c="red",
+            s=10,
+            zorder=3,
+            label="backward run",
+        )
+        p.legend()
+        plt.show()
+    else:
+        FINAL = pd.concat([FINAL, segments])
         if to_plot:
+            p.scatter(
+                segments["Minutes"],
+                segments["total_flowrate"],
+                c="black",
+                s=10,
+                zorder=3,
+            )
             p.legend()
             plt.show()
 
-    else:
-        print("too many datapoints, steady state separation unsuccessful. skipping.")
+    # segments = processing.recover_averaged_data(
+    #     metrics,
+    #     frequency,
+    #     step_size_fl,
+    #     step_duration,
+    #     relevant_features,
+    #     initial_bed_height,
+    # )
+
+    # # print(f"1. Final shape = {FINAL.shape}")
+    # print("segments = ", len(segments))
+    # if len(segments) < 100:
+    #     for seg in segments:
+    #         if to_plot:
+    #             p.scatter(
+    #                 seg["Minutes"], seg["total_flowrate"], c="black", s=10, zorder=3
+    #             )
+    #         # print("seg = ", seg)
+    #         if np.any(np.isnan(seg)):
+    #             raise ValueError("nan in seg")
+
+    #         FINAL = pd.concat([FINAL, seg])
+    #     if to_plot:
+    #         p.legend()
+    #         plt.show()
+
+    # else:
+    #     print("too many datapoints, steady state separation unsuccessful. skipping.")
 
 
-# FINAL.to_csv("sand_data.csv", index=False)
+if to_save:
+    FINAL.to_csv("sand_data.csv", index=False)
+    FINAL_backwards.to_csv("sand_data_backwards.csv", index=False)
 print("final shape = ", FINAL.shape)
-print("Final columns = ", FINAL.columns)
+print("final backwards shape = ", FINAL_backwards.shape)
