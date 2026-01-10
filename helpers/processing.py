@@ -36,10 +36,12 @@ def calculate_metrics(Data, filled_height, material, fl_step):
     if material == "alumina":
         data["fl_L1"] = data["mfc1"] + data["mfc2"] + data["mfc3"]
         data["fl_L2"] = data["mfc4"] + data["mfc5"] + data["mfc6"]
+        # data["fl_L3"] = data["mfc7"] + data["mfc8"] + data["mfc9"]
 
-        if data["fl_L1"].mean() < 4 * fl_step:
+        if data["fl_L1"].mean() < 2 * fl_step:
             print("choosing mfc1,2,3 was incorrect. taking 789 instead.")
             data["fl_L1"] = data["mfc7"] + data["mfc8"] + data["mfc9"]
+            # data["fl_L3"] = data["mfc1"] + data["mfc2"] + data["mfc3"]
 
     elif material == "sand":
         data["fl_L1"] = data["mfc7"] + data["mfc8"] + data["mfc9"]
@@ -89,9 +91,9 @@ def filter(x, f):
 def recover_averaged_data(
     data, freq, step_size_fl, step_duration, features, initialbed
 ):
-    difing = data["total_flowrate"].rolling(
-        int(step_duration * 0.1 * freq)
-    ).max() - data["total_flowrate"].rolling(int(step_duration * 0.1 * freq)).min(
+    difing = data["flowrate_combi"].rolling(
+        int(step_duration * 0.2 * freq)
+    ).max() - data["flowrate_combi"].rolling(int(step_duration * 0.2 * freq)).min(
         step_duration * freq
     )
 
@@ -119,8 +121,8 @@ def recover_averaged_data_array(
     data, freq, step_size_fl, step_duration, features, initialbed
 ):
     difing = data["flowrate_combi"].rolling(
-        int(step_duration * 0.1 * freq)
-    ).max() - data["flowrate_combi"].rolling(int(step_duration * 0.1 * freq)).min(
+        int(step_duration * 0.2 * freq)
+    ).max() - data["flowrate_combi"].rolling(int(step_duration * 0.2 * freq)).min(
         step_duration * freq
     )
 

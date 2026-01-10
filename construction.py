@@ -5,7 +5,13 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-file_path = "good_data/sand"
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+
+file_path = "good_data/alumina"
+mater = "alumina"
 folder = Path(file_path)
 relevant_features = [
     "Minutes",
@@ -17,10 +23,11 @@ relevant_features = [
     "flowrate_combi",
     "bed_exp",
 ]
-mater = "sand"
 
-to_plot = False
-to_save = True
+to_plot = True
+to_save = False
+skip = False
+total = False
 
 FINAL = pd.DataFrame(columns=relevant_features)
 FINAL_backwards = pd.DataFrame(columns=relevant_features)
@@ -39,18 +46,23 @@ for file in folder.iterdir():
     step_size_fl = int(step_size_fl)
     step_duration = int(step_duration)
 
-    # if run_type == "hysteresis":  # including only the forward runs for now
-    #     continue
-
-    if step_duration < 30:
-        print("Step duration too small for steady state assumption. Skipping file.")
+    if step_duration < 100:
+        print(
+            f"Step duration too small for steady state assumption. Skipping {file.name}."
+        )
         continue
 
-    if initial_bed_height == 0.956:
-        print("skipping 0.956m for testing")
-        continue
-
-    print(f"File name: {file.name}")
+    if skip:
+        if (
+            # initial_bed_height == 0.956
+            # initial_bed_height == 0.889
+            initial_bed_height == 0.808
+            or initial_bed_height == 0.903
+            or initial_bed_height == 0.872
+            or initial_bed_height == 0.897
+        ):
+            print(f"skipping {initial_bed_height} for testing")
+            continue
 
     if file.suffix == ".xlsx":
         isexcel = True
@@ -69,14 +81,8 @@ for file in folder.iterdir():
         frequency,
     )
 
-    if to_plot:
-        fig, p = plt.subplots(1, 1)
-        p.plot(metrics["Minutes"], metrics["total_flowrate"], label="all MFCs")
-        # p.plot(metrics["Minutes"], metrics["flowrate_combi"], label="specific MFCs")
-        fig.set_figwidth(10)
-        fig.set_figheight(7.5)
-        # p.set_xlim(0, 21)
-        # p.set_ylim(0, 1700)
+    if total:
+        run_type = "forward"
 
     segments = processing.recover_averaged_data_array(
         metrics,
@@ -87,16 +93,50 @@ for file in folder.iterdir():
         initial_bed_height,
     )
 
-    if segments.shape[0] > 100:
-        print("Too many datapoints, steady state assumption voided. Skipping file.")
-        continue
+    if to_plot:
+        fig, p = plt.subplots(1, 1)
+        p.plot(metrics["Minutes"], metrics["flowrate_combi"], label="Total flowrate")
+        p.plot(metrics["Minutes"], metrics["fl_L1"], label="L1", color="orange")
+        p.plot(metrics["Minutes"], metrics["fl_L2"], label="L2", color="green")
+        # p.plot(metrics["Minutes"], metrics["fl_L3"], label="L3", color="purple")
+        # p.plot(
+        #     metrics["Minutes"],
+        #     metrics["total_flowrate"],
+        #     label="All MFCs",
+        #     color="red",
+        # )
+        # p.plot(metrics["Minutes"], metrics["flowrate_combi"], label="specific MFCs")
+        fig.set_figwidth(10)
+        fig.set_figheight(7.5)
+        # p.set_xlim(0, 21)
+        # p.set_ylim(0, 1700)
+        p.scatter(
+            segments.loc[:, "Minutes"],
+            segments.loc[:, "fl_L1"],
+            s=20,
+            zorder=3,
+            c="orange",
+        )
+        p.scatter(
+            segments.loc[:, "Minutes"],
+            segments.loc[:, "fl_L2"],
+            s=10,
+            zorder=3,
+            c="green",
+        )
+        p.set_title(f"{initial_bed_height}m")
+
+    # if segments.shape[0] > 120:
+    #     print("Too many datapoints, steady state assumption voided. Skipping file.")
+    #     continue
 
     if np.any(np.isnan(segments)):
         raise ValueError("nan in segments")
 
     segments = segments.dropna(subset=relevant_features)
 
-    max_ind = segments["total_flowrate"].idxmax()
+    max_ind = segments["flowrate_combi"].idxmax()
+    print(f"{file.name} included.")
 
     if run_type == "hysteresis":
         FINAL = pd.concat([FINAL, segments.loc[: max_ind + 1]])
@@ -104,7 +144,7 @@ for file in folder.iterdir():
         if to_plot:
             p.scatter(
                 segments.loc[: max_ind + 1, "Minutes"],
-                segments.loc[: max_ind + 1, "total_flowrate"],
+                segments.loc[: max_ind + 1, "flowrate_combi"],
                 c="blue",
                 s=10,
                 zorder=3,
@@ -112,7 +152,7 @@ for file in folder.iterdir():
             )
             p.scatter(
                 segments.loc[max_ind:, "Minutes"],
-                segments.loc[max_ind:, "total_flowrate"],
+                segments.loc[max_ind:, "flowrate_combi"],
                 c="red",
                 s=10,
                 zorder=3,
@@ -125,7 +165,7 @@ for file in folder.iterdir():
         if to_plot:
             p.scatter(
                 segments["Minutes"],
-                segments["total_flowrate"],
+                segments["flowrate_combi"],
                 c="black",
                 s=10,
                 zorder=3,
@@ -164,7 +204,10 @@ for file in folder.iterdir():
 
 
 if to_save:
-    FINAL.to_csv("sand_data.csv", index=False)
-    FINAL_backwards.to_csv("sand_data_backwards.csv", index=False)
+    if total:
+        FINAL.to_csv("sand_data_total.csv", index=False)
+    else:
+        FINAL.to_csv("sand_data_alumina.csv", index=False)
+        FINAL_backwards.to_csv("sand_data_alumina_backwards.csv", index=False)
 print("final shape = ", FINAL.shape)
 print("final backwards shape = ", FINAL_backwards.shape)
