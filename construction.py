@@ -10,8 +10,8 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
-file_path = "good_data/alumina"
-mater = "alumina"
+file_path = "good_data/sand"
+mater = "sand"
 folder = Path(file_path)
 relevant_features = [
     "Minutes",
@@ -24,10 +24,10 @@ relevant_features = [
     "bed_exp",
 ]
 
-to_plot = True
-to_save = False
-skip = False
-total = False
+to_plot = False
+to_save = True
+skip = True
+total = True
 
 FINAL = pd.DataFrame(columns=relevant_features)
 FINAL_backwards = pd.DataFrame(columns=relevant_features)
@@ -54,12 +54,12 @@ for file in folder.iterdir():
 
     if skip:
         if (
-            # initial_bed_height == 0.956
+            initial_bed_height == 0.956
             # initial_bed_height == 0.889
-            initial_bed_height == 0.808
+            # or initial_bed_height == 0.808
             or initial_bed_height == 0.903
             or initial_bed_height == 0.872
-            or initial_bed_height == 0.897
+            # or initial_bed_height == 0.897
         ):
             print(f"skipping {initial_bed_height} for testing")
             continue
@@ -140,7 +140,11 @@ for file in folder.iterdir():
 
     if run_type == "hysteresis":
         FINAL = pd.concat([FINAL, segments.loc[: max_ind + 1]])
+        FINAL["step_size"] = step_size_fl
+        # FINAL["normalized_p"] = FINAL["p1"] / initial_bed_height
         FINAL_backwards = pd.concat([FINAL_backwards, segments.loc[max_ind:]])
+        FINAL_backwards["step_size"] = step_size_fl
+        # FINAL_backwards["normalized_p"] = FINAL_backwards["p1"] / initial_bed_height
         if to_plot:
             p.scatter(
                 segments.loc[: max_ind + 1, "Minutes"],
@@ -162,6 +166,8 @@ for file in folder.iterdir():
             plt.show()
     else:
         FINAL = pd.concat([FINAL, segments])
+        FINAL["step_size"] = step_size_fl
+        # FINAL["normalized_p"] = FINAL["p1"] / initial_bed_height
         if to_plot:
             p.scatter(
                 segments["Minutes"],
@@ -204,10 +210,20 @@ for file in folder.iterdir():
 
 
 if to_save:
-    if total:
-        FINAL.to_csv("sand_data_total.csv", index=False)
+    if mater == "sand":
+        if total:
+            FINAL.to_csv("sand_data_total.csv", index=False)
+        else:
+            FINAL.to_csv("sand_data.csv", index=False)
+            FINAL_backwards.to_csv("sand_data_backwards.csv", index=False)
+
+    elif mater == "alumina":
+        if total:
+            FINAL.to_csv("sand_data_alumina_total.csv", index=False)
+        else:
+            FINAL.to_csv("sand_data_alumina.csv", index=False)
+            FINAL_backwards.to_csv("sand_data_alumina_backwards.csv", index=False)
     else:
-        FINAL.to_csv("sand_data_alumina.csv", index=False)
-        FINAL_backwards.to_csv("sand_data_alumina_backwards.csv", index=False)
+        raise ValueError("incorrect material input")
 print("final shape = ", FINAL.shape)
 print("final backwards shape = ", FINAL_backwards.shape)
