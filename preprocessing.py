@@ -34,20 +34,53 @@ def read_and_process_data(file_path: str, is_excel: bool = False):
     else:
         data = pd.read_csv(file_path, delimiter="\t")
 
-    data = data.apply(lambda x: x.str.replace(",", ".") if x.dtype == "object" else x)
+    # data = data.apply(
+    #     lambda x: (
+    #         x.str.replace(",", ".").str.strip().str.split(r"\s+|\t").str[0]
+    #         if x.dtype == "object"
+    #         else x
+    #     )
+    # )
+
+    numeric_cols = [
+        "mfc1",
+        "mfc2",
+        "mfc3",
+        "mfc4",
+        "mfc5",
+        "mfc6",
+        "mfc7",
+        "mfc8",
+        "mfc9",
+        "p1",
+        "distance",
+    ]
+    for col in numeric_cols:
+        if col in data.columns:
+            data[col] = (
+                data[col]
+                .astype(str)
+                .str.replace(",", ".")
+                .str.strip()
+                .str.split(r"\s+|\t")
+                .str[0]
+            )
+            data[col] = pd.to_numeric(data[col], errors="coerce")
 
     if "Time" in data.columns:
         temp1 = pd.to_datetime(data["Time"], format="%H:%M:%S.%f", errors="coerce")
+        if temp1.isna().any():
+            temp1 = pd.to_datetime(data["Time"], errors="coerce")
 
-        if np.any(np.isnan(temp1)):
-            data["Minutes"] = (data["Time"] - data["Time"].iloc[0]) / (60 * 1e9)
-        else:
+        if temp1.notna().all():
             data["Time"] = temp1.copy()
             data["Minutes"] = (
                 data["Time"] - data["Time"].iloc[0]
             ).dt.total_seconds() / 60.0
+        else:
+            data["Minutes"] = (data["Time"] - data["Time"].iloc[0]) / (60 * 1e9)
 
-    data = data.apply(pd.to_numeric, errors="coerce")
+    # data = data.apply(pd.to_numeric, errors="coerce")
     return data
 
 
@@ -134,8 +167,9 @@ def filter(x: pd.DataFrame, f: float):
         A pandas DataFrame with the filtered metrics.
     """
 
-    for k in range(x.shape[-1]):
-        x.iloc[:, k] = butter_filter(x.iloc[:, k], f)
+    for k in range(1, x.shape[-1]):
+        if pd.api.types.is_numeric_dtype(x.iloc[0, k]):
+            x.iloc[:, k] = butter_filter(x.iloc[:, k], f)
 
     return x
 
@@ -223,13 +257,13 @@ def recover_averaged_data(
     USER INPUTS
 """
 # Path to the folder containing the data files
-file_path = "good_data/alumina"
+file_path = "good_data/sand"
 # Material type (e.g., 'alumina' or 'sand')
-material = "alumina"
+material = "sand"
 # To save the processed data
 to_save = False
 # To split into forwards and backwards runs
-to_split = False
+to_split = True
 # To plot the processed data for each experiment
 to_plot = True
 # List of relevant features to be used in the final dataset
@@ -254,6 +288,7 @@ FINAL = pd.DataFrame(columns=relevant_features)
 FINAL_backwards = pd.DataFrame(columns=relevant_features)
 
 for file in folder.iterdir():
+    print(file.name)
     if not file.is_file():
         continue
 
@@ -289,7 +324,11 @@ for file in folder.iterdir():
         isexcel = False
 
     data = read_and_process_data(file_path + "/" + file.name, isexcel)
-
+    # print(data.isna().any())
+    # nan_rows = data[data["p1"].isna()]
+    # print("p1 nan rows = ", nan_rows["p1"])
+    # print("dtypes")
+    # print(data.dtypes)
     metrics = filter(
         calculate_metrics(data, initial_bed_height, material, step_size_fl),
         frequency,
@@ -297,6 +336,9 @@ for file in folder.iterdir():
 
     # if to_split:
     #     run_type = "forward"
+    # print("metrics", metrics.isna().any())
+    # print(metrics.dtypes)
+    # print("flowrate combined dtype = ", metrics["flowrate_combined"].head())
 
     segments = recover_averaged_data(
         metrics,
@@ -329,8 +371,12 @@ for file in folder.iterdir():
             c="green",
         )
         p.set_title(f"{initial_bed_height}m")
+        # plt.show()
 
-    if np.any(np.isnan(segments)):
+    print(type(segments))
+    if np.any(pd.isna(segments)):
+        nancols = segments.isna().any()
+        print(nancols)
         raise ValueError("nan in segments")
 
     segments = segments.dropna(subset=relevant_features)
